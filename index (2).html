@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ФармХаб CRM · КАМ — мок v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{margin:0}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
+
+/* ─────────────────────────────────────────────────────────────
+   ФармХаб CRM · Контур КАМ — мок v2 (правки от 11.06)
+   Все данные тестовые. Квартал: 2 кв. 2026, день 72 из 91 (79%)
+   ───────────────────────────────────────────────────────────── */
+
+const Q = { label: "2 кв. 2026", day: 72, days: 91, pace: 79 };
+const fmt = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
+const fmtM = (n) => (Math.abs(n) >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " млн" : fmt(n));
+
+const RISK = {
+  high: { label: "Высокий", c: "text-red-700", dot: "bg-red-500" },
+  mid: { label: "Средний", c: "text-amber-700", dot: "bg-amber-500" },
+  low: { label: "Низкий", c: "text-emerald-700", dot: "bg-emerald-500" },
+};
+
+const CONTRACTS = [
+  { id: "aveksima", name: "Авексима", type: "Прямой", basis: "Закупки (СТУ)", budget: 1382400, extra: 217600, planRub: 9600000, factRub: 7008000, pct: 73, forecast: 93, risk: "mid", savior: "Константа", gp: [41, 48], list: true, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: ["МЕТРОМИКОН-НЕО: темп 61% при 79% квартала", "Закрылась точка ООО «Эдем», Саров"] },
+  { id: "bayer", name: "Байер", type: "Прямой", basis: "Продажи (МДЛП)", budget: 4086130, extra: 0, planRub: 24500000, factRub: 20825000, pct: 85, forecast: 108, risk: "low", savior: "—", gp: [112, 115], list: true, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: [] },
+  { id: "akrihin", name: "Акрихин", type: "Прямой / АСНА", basis: "Смешанный*", budget: 1506394, extra: 240000, planRub: 11200000, factRub: 5824000, pct: 52, forecast: 66, risk: "high", savior: "Примула+, Фармасеть", gp: [29, 44], list: true, terms: false, money: { act: "ok", pay: "ok", dz: 0 }, alarms: ["Условия по 2 новым SKU не согласованы", "4 точки закрылись с начала квартала", "3 SKU в красной зоне"] },
+  { id: "avvarus", name: "Авва Рус", type: "Прямой", basis: "Закупки (СТУ)", budget: 660754, extra: 96000, planRub: 4800000, factRub: 3552000, pct: 74, forecast: 95, risk: "mid", savior: "—", gp: [33, 36], list: true, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: ["Цены ЖВ перерегистрируются — риск по 1 SKU"] },
+  { id: "promomed", name: "Промомед", type: "Прямой", basis: "Продажи (МДЛП)", budget: 1359640, extra: 180000, planRub: 8900000, factRub: 7209000, pct: 81, forecast: 103, risk: "low", savior: "—", gp: [52, 55], list: true, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: [] },
+  { id: "rusfik", name: "Русфик", type: "Прямой", basis: "Закупки (СТУ)", budget: 1662009, extra: 0, planRub: 10100000, factRub: 7777000, pct: 77, forecast: 98, risk: "mid", savior: "—", gp: [47, 49], list: true, terms: true, money: { act: "ok", pay: "overdue", dz: 236218 }, alarms: ["ДЗ за 1 кв.: 236 218 ₽, просрочка 18 дней — выпадет из премии через 72 дня"] },
+  { id: "tathim", name: "Татхимфармпрепараты", type: "Прямой", basis: "Закупки (СТУ)", budget: 2381769, extra: 310000, planRub: 14300000, factRub: 9867000, pct: 69, forecast: 88, risk: "mid", savior: "ДИСАФАРМ", gp: [58, 70], list: true, terms: true, money: { act: "overdue", pay: "pending", dz: 0 }, alarms: ["АКТ за 1 кв. не выставлен — просрочка 12 дней от дедлайна 60 к.д.!"] },
+  { id: "yadran", name: "Ядран", type: "АСНА", basis: "Закупки (СТУ)", budget: 953272, extra: 0, planRub: 6200000, factRub: 4650000, pct: 75, forecast: 96, risk: "mid", savior: "—", gp: [0, 0], list: true, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: [] },
+  { id: "alpen", name: "Альпен Фарма", type: "Прямой", basis: "Продажи (МДЛП)", budget: 102408, extra: 0, planRub: 900000, factRub: 279000, pct: 31, forecast: 42, risk: "high", savior: "—", gp: [8, 14], list: false, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: ["Список аптек на 2 кв. не согласован производителем", "Темп 31% при 79% квартала"] },
+  { id: "verofarm", name: "Верофарм", type: "Прямой", basis: "Закупки (СТУ)", budget: 741303, extra: 0, planRub: 5400000, factRub: 4212000, pct: 78, forecast: 99, risk: "low", savior: "—", gp: [38, 40], list: true, terms: true, money: { act: "ok", pay: "ok", dz: 0 }, alarms: [] },
+];
+
+/* ── базовые компоненты ── */
+
+const Badge = ({ children, tone = "slate" }) => {
+  const tones = {
+    slate: "bg-slate-100 text-slate-600 border-slate-200",
+    blue: "bg-blue-50 text-blue-700 border-blue-200",
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    red: "bg-red-50 text-red-700 border-red-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+  };
+  return <span className={`inline-block px-2 py-0.5 text-xs leading-snug rounded border ${tones[tone]} whitespace-nowrap`}>{children}</span>;
+};
+
+const Pulse = ({ pct, forecast }) => {
+  const fColor = pct >= Q.pace - 4 ? "bg-emerald-500" : pct >= Q.pace - 15 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="relative h-4 w-full rounded bg-slate-100" title={`Факт ${pct}% · темп квартала ${Q.pace}% · прогноз ${forecast}%`}>
+      <div className="absolute inset-y-0 left-0 rounded border border-dashed border-slate-400/70" style={{ width: Math.min(forecast, 130) / 1.3 + "%" }} />
+      <div className={`absolute inset-y-0 left-0 rounded ${fColor}`} style={{ width: Math.min(pct, 130) / 1.3 + "%" }} />
+      <div className="absolute -top-1 -bottom-1 w-0.5 bg-slate-700" style={{ left: Q.pace / 1.3 + "%" }} />
+      <div className="absolute -top-1 -bottom-1 w-px bg-slate-300" style={{ left: 100 / 1.3 + "%" }} />
+    </div>
+  );
+};
+
+const PctCell = ({ pct }) => {
+  const c = pct >= Q.pace - 4 ? "text-emerald-700" : pct >= Q.pace - 15 ? "text-amber-700" : "text-red-700";
+  return <span className={`font-semibold tabular-nums ${c}`}>{pct}%</span>;
+};
+
+const Card = ({ title, right, children, className = "" }) => (
+  <div className={`bg-white rounded-xl border border-slate-200 ${className}`}>
+    {(title || right) && (
+      <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3 border-b border-slate-100">
+        <div className="text-sm font-bold text-slate-800">{title}</div>
+        {right}
+      </div>
+    )}
+    <div className="p-5">{children}</div>
+  </div>
+);
+
+/* Явные вкладки: серый контейнер, активная — белая с тенью и синей полосой */
+const Tabs = ({ tabs, active, onChange }) => (
+  <div className="inline-flex flex-wrap gap-1 bg-slate-200/70 rounded-xl p-1.5">
+    {tabs.map(([k, l]) => (
+      <button key={k} onClick={() => onChange(k)}
+        className={`text-sm px-4 py-2 rounded-lg transition-all ${active === k ? "bg-white shadow font-bold text-[#0F4C81] border-b-2 border-[#0F4C81]" : "text-slate-600 hover:bg-white/60"}`}>
+        {l}
+      </button>
+    ))}
+  </div>
+);
+
+const Num = ({ v, set, step = 1, suffix = "%", min = 0, max = 999 }) => (
+  <div className="flex items-center gap-1.5">
+    <button onClick={() => set(Math.max(min, v - step))} className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 text-base leading-none">−</button>
+    <span className="w-14 text-center tabular-nums font-bold text-slate-800 text-sm">{v}{suffix}</span>
+    <button onClick={() => set(Math.min(max, v + step))} className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 text-base leading-none">+</button>
+  </div>
+);
+
+const Th = ({ children, className = "" }) => <th className={`py-2 pr-3 font-semibold text-xs text-slate-400 text-left ${className}`}>{children}</th>;
+
+/* ── Экран · Мой портфель ── */
+
+function PortfolioScreen({ openContract }) {
+  const [sort, setSort] = useState("prio");
+  const rows = useMemo(() => {
+    const arr = [...CONTRACTS];
+    if (sort === "prio") arr.sort((a, b) => (b.budget + b.extra) * Math.max(0, 100 - b.forecast) - (a.budget + a.extra) * Math.max(0, 100 - a.forecast));
+    if (sort === "budget") arr.sort((a, b) => b.budget + b.extra - (a.budget + a.extra));
+    if (sort === "pct") arr.sort((a, b) => a.pct - b.pct);
+    return arr;
+  }, [sort]);
+
+  const totBudget = CONTRACTS.reduce((s, c) => s + c.budget + c.extra, 0);
+  const wPct = Math.round(CONTRACTS.reduce((s, c) => s + c.pct * (c.budget + c.extra), 0) / totBudget);
+  const wFc = Math.round(CONTRACTS.reduce((s, c) => s + c.forecast * (c.budget + c.extra), 0) / totBudget);
+  const allAlarms = CONTRACTS.flatMap((c) => c.alarms.map((a) => ({ c: c.name, a, risk: c.risk })));
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            ["Бюджет квартала", fmtM(totBudget) + " ₽", "10 контрактов"],
+            ["Исполнение", wPct + "%", `темп квартала ${Q.pace}%`],
+            ["Прогноз квартала", wFc + "%", "run-rate"],
+            ["Под риском", "3 контракта", fmtM(CONTRACTS.filter((c) => c.risk === "high").reduce((s, c) => s + c.budget + c.extra, 0)) + " ₽ в красной зоне"],
+          ].map(([t, v, s], i) => (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 px-5 py-4">
+              <div className="text-xs text-slate-500">{t}</div>
+              <div className="text-2xl font-bold text-slate-800 tabular-nums">{v}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{s}</div>
+            </div>
+          ))}
+        </div>
+
+        <Card
+          title={`Пульс контрактов · ${Q.label}`}
+          right={
+            <div className="flex gap-1.5 text-xs">
+              {[["prio", "Приоритет"], ["budget", "Бюджет"], ["pct", "% исполнения"]].map(([k, l]) => (
+                <button key={k} onClick={() => setSort(k)} className={`px-3 py-1.5 rounded-md ${sort === k ? "bg-[#0F4C81] text-white font-semibold" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{l}</button>
+              ))}
+            </div>
+          }
+        >
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-100">
+                <Th>Производитель</Th><Th>Тип · расчёт от</Th><Th>Бюджет, ₽</Th><Th className="w-48">Пульс</Th><Th>Факт</Th><Th>Прогноз</Th><Th>Статусы квартала</Th><Th>Деньги</Th><Th>Риск</Th>
+              </tr></thead>
+              <tbody>
+                {rows.map((c) => (
+                  <tr key={c.id} onClick={() => openContract(c.id)} className="border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer align-top">
+                    <td className="py-2.5 pr-3">
+                      <div className="font-bold text-slate-800">{c.name}</div>
+                      <div className="text-xs text-slate-400">{c.savior !== "—" ? `Спасатель: ${c.savior}` : "без Спасателя"}</div>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <Badge tone={c.type === "АСНА" ? "indigo" : c.type.includes("АСНА") ? "blue" : "green"}>{c.type}</Badge>
+                      <div className="text-xs text-slate-500 mt-1">{c.basis}</div>
+                    </td>
+                    <td className="py-2.5 pr-3 tabular-nums text-slate-700 font-medium">
+                      {fmt(c.budget)}
+                      {c.extra > 0 && <div className="text-xs text-slate-400">+{fmt(c.extra)} доп.</div>}
+                    </td>
+                    <td className="py-2.5 pr-3 pt-3.5"><Pulse pct={c.pct} forecast={c.forecast} /></td>
+                    <td className="py-2.5 pr-3"><PctCell pct={c.pct} /></td>
+                    <td className="py-2.5 pr-3 tabular-nums text-slate-600">{c.forecast}%</td>
+                    <td className="py-2.5 pr-3">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge tone={c.list ? "green" : "red"}>{c.list ? "Список ✓" : "Список —"}</Badge>
+                        <Badge tone={c.terms ? "green" : "red"}>{c.terms ? "Условия ✓" : "Условия —"}</Badge>
+                        {c.gp[1] > 0 && <Badge tone={c.gp[0] / c.gp[1] > 0.85 ? "green" : "amber"}>ГП {c.gp[0]}/{c.gp[1]}</Badge>}
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-3 text-xs text-slate-500">
+                      <div className="flex gap-2">
+                        <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${c.money.act === "ok" ? "bg-emerald-500" : "bg-red-500"}`} />Акт</span>
+                        <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${c.money.pay === "ok" ? "bg-emerald-500" : c.money.pay === "overdue" ? "bg-red-500" : "bg-slate-300"}`} />Оплата</span>
+                      </div>
+                      {c.money.dz > 0 && <div className="text-red-600 font-semibold mt-0.5">ДЗ {fmt(c.money.dz)} ₽</div>}
+                    </td>
+                    <td className="py-2.5">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${RISK[c.risk].c}`}>
+                        <span className={`w-2.5 h-2.5 rounded-full ${RISK[c.risk].dot}`} />{RISK[c.risk].label}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-xs text-slate-400">Чёрная метка на пульсе — темп квартала ({Q.pace}%). Пунктир — прогноз. Клик по строке открывает карточку контракта.</div>
+        </Card>
+      </div>
+
+      <div className="space-y-5">
+        <Card title="Критические отклонения" right={<Badge tone="red">{allAlarms.length}</Badge>}>
+          <div className="space-y-2">
+            {allAlarms.map((x, i) => (
+              <div key={i} className={`text-sm rounded-lg border px-3 py-2 ${x.risk === "high" ? "bg-red-50 border-red-100" : "bg-amber-50/60 border-amber-100"}`}>
+                <span className="font-bold text-slate-700">{x.c}:</span> <span className="text-slate-600">{x.a}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card title="Источники данных">
+          <div className="space-y-2 text-sm text-slate-600">
+            <div className="flex justify-between"><span>СТУ аптек</span><span className="text-xs text-slate-400">сегодня 06:40</span></div>
+            <div className="flex justify-between"><span>МДЛП / ГИС МТ</span><span className="text-xs text-slate-400">сегодня 05:15</span></div>
+            <div className="flex justify-between"><span>Срезы производителей</span><span className="text-xs text-amber-600 font-medium">2 контракта ждут срез</span></div>
+            <div className="flex justify-between"><span>Реестр клиентов</span><span className="text-xs text-red-600 font-medium">8 точек закрылось в кв.</span></div>
+          </div>
+        </Card>
+        <Card title="ИИ-подсказка дня">
+          <div className="text-sm text-slate-600 leading-relaxed">
+            Акрихин — наибольший рублёвый разрыв до плана (−5,4 млн). Дистрибьюция 3 красных SKU — всего 38% точек: рост до 60% через промо-заказ исторически даёт +12–15% к темпу.
+          </div>
+          <button className="mt-2.5 text-sm text-[#0F4C81] font-semibold hover:underline">Открыть сценарий для Акрихина →</button>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ── Карточка контракта · данные ── */
+
+const SKUS = [
+  { id: "metro", name: "МЕТРОМИКОН-НЕО супп. №14", inv: 12, planU: 5800, factU: 3538, fc: 78, basis: "Закупки", risk: "high", distr: 0.56, perPt: 26000, stock: 71 },
+  { id: "nobF", name: "НОБАЗИТ ФОРТЕ таб. №20", inv: 20, planU: 1350, factU: 1148, fc: 109, basis: "Продажи", risk: "low", distr: 0.78, perPt: 6900, stock: 24 },
+  { id: "targ", name: "ТАРЖИФОРТ супп. ваг. №10", inv: 10, planU: 4100, factU: 3034, fc: 95, basis: "Закупки", risk: "low", distr: 0.64, perPt: 22500, stock: 33 },
+  { id: "nob", name: "НОБАЗИТ таб. 250мг №20", inv: 15, planU: 2200, factU: 1452, fc: 84, basis: "Продажи", risk: "mid", distr: 0.61, perPt: 11200, stock: 41 },
+  { id: "acik", name: "АЦИКЛОВИР-АВЕКСИМА таб. №20", inv: 8, planU: 6900, factU: 5244, fc: 97, basis: "Закупки", risk: "low", distr: 0.83, perPt: 13100, stock: 29 },
+  { id: "parac", name: "ПАРАЦЕТАМОЛ-АВЕКСИМА таб. №20", inv: 6, planU: 9400, factU: 5922, fc: 80, basis: "Закупки", risk: "mid", distr: 0.71, perPt: 12300, stock: 36 },
+];
+const SKUS_OFF = ["ИБУПРОФЕН-АВЕКСИМА таб. №50", "АМБРОКСОЛ-АВЕКСИМА сироп", "ЛОРАТАДИН-АВЕКСИМА таб. №10", "ОМЕПРАЗОЛ-АВЕКСИМА капс. №30"];
+
+/* у каждого ИНН — точки: закупки за квартал, зав/фарм, остаток (дней), статус данных */
+const mkPts = (defs) => defs.map(([addr, buy, zav, farm, stock, st]) => ({ addr, buy, zav, farm, stock, st }));
+const INNS = [
+  { inn: "5024033830", name: "ООО «АрхиМед»", tag: "Спасатель", pts: 6, agreed: "ранее", gp: true, excl: true, fact: 1860000, plan: 2050000, stock: 34,
+    points: mkPts([["МО, Красногорск, Ленина 14", 412000, 1, 4, 28, "ok"], ["МО, Химки, Юбилейный пр. 30", 386000, 1, 3, 31, "ok"], ["МО, Одинцово, Можайское ш. 71", 340000, 1, 3, 26, "ok"], ["МО, Мытищи, Мира 22", 318000, 1, 4, 39, "ok"], ["МО, Королёв, Космонавтов 5", 246000, 1, 2, 41, "ok"], ["МО, Балашиха, Советская 9", 158000, 0, 2, 52, "ok"]]) },
+  { inn: "6166042937", name: "ООО «Примула+»", tag: null, pts: 6, agreed: "ранее", gp: true, excl: true, fact: 1140000, plan: 1290000, stock: 37,
+    points: mkPts([["Ростов-на-Дону, Б.Садовая 41", 322000, 1, 4, 30, "ok"], ["Ростов-на-Дону, Стачки 188", 274000, 1, 3, 35, "ok"], ["Батайск, Ленина 12", 213000, 1, 3, 33, "ok"], ["Азов, Московская 64", 187000, 1, 2, 40, "ok"], ["Ростов-на-Дону, Вятская 39а", 144000, 1, 2, 44, "ok"], ["Аксай, Садовая 18", 0, 1, 2, null, "no-buy"]]) },
+  { inn: "2626804403", name: "ООО «ВИТАМИНФАРМ»", tag: "новый кв.", pts: 6, agreed: "новый кв.", gp: true, excl: false, fact: 540000, plan: 980000, stock: 48,
+    points: mkPts([["Черкесск, Ленина 57", 198000, 1, 3, 38, "ok"], ["Черкесск, Доватора 17", 156000, 1, 2, 44, "ok"], ["Усть-Джегута, Морозова 8", 102000, 1, 2, 51, "ok"], ["Карачаевск, Мира 21", 84000, 0, 2, 56, "ok"], ["Черкесск, Космонавтов 29", 0, 1, 1, null, "no-buy"], ["Зеленчукская, Ленина 71", 0, 0, 0, null, "no-data"]]) },
+  { inn: "3306013997", name: "ООО «МИР ЛЕКАРСТВ»", tag: null, pts: 5, agreed: "ранее", gp: true, excl: false, fact: 612000, plan: 760000, stock: 31,
+    points: mkPts([["Кольчугино, 50 лет Октября 5", 218000, 1, 3, 27, "ok"], ["Кольчугино, Мира 11", 176000, 1, 2, 30, "ok"], ["Кольчугино, Веденеева 2", 124000, 1, 2, 36, "ok"], ["Юрьев-Польский, Шибанкова 79", 94000, 1, 1, 42, "ok"], ["Кольчугино, 3-го Интернационала 64", 0, 0, 1, null, "no-data"]]) },
+  { inn: "0561046931", name: "ООО «ТД «СФЕРА»", tag: "новый кв.", pts: 5, agreed: "новый кв.", gp: false, excl: false, fact: 421000, plan: 690000, stock: 44,
+    points: mkPts([["Махачкала, Ярагского 64", 184000, 1, 3, 39, "ok"], ["Махачкала, Гамидова 49", 142000, 1, 2, 46, "ok"], ["Каспийск, Ленина 38", 95000, 1, 2, 49, "ok"], ["Махачкала, Акушинского 90", 0, 0, 1, null, "no-data"], ["Дербент, Гагарина 23", 0, 0, 0, null, "no-data"]]) },
+  { inn: "7751154007", name: "ООО «САЛЮС»", tag: null, pts: 4, agreed: "ранее", gp: false, excl: false, fact: 387000, plan: 520000, stock: 35,
+    points: mkPts([["Москва, Профсоюзная 104", 156000, 1, 3, 31, "ok"], ["Москва, Бутово, Скобелевская 4", 131000, 1, 2, 34, "ok"], ["Москва, Коммунарка, Лазурная 7", 100000, 1, 2, 40, "ok"], ["Москва, Щербинка, Пушкинская 2", 0, 1, 1, null, "no-buy"]]) },
+  { inn: "5203002997", name: "ООО «Эдем»", tag: "закрытие", pts: 3, agreed: "ранее", gp: true, excl: false, fact: 84000, plan: 240000, stock: 62,
+    points: mkPts([["Саров, Курчатова 4 — ЗАКРЫТА 14.05", 0, 0, 0, null, "closed"], ["Саров, Московская 21", 54000, 1, 1, 58, "ok"], ["Саров, Силкина 8", 30000, 0, 1, 66, "ok"]]) },
+];
+
+const PT_STATUS = {
+  ok: ["", null],
+  "no-buy": ["Не закупает в кв.", "amber"],
+  "no-data": ["Нет данных СТУ — точка не прогружена", "red"],
+  closed: ["Закрыта (реестр клиентов)", "red"],
+};
+
+/* ── Экран · Карточка контракта ── */
+
+function ContractScreen({ goScenario }) {
+  const [tab, setTab] = useState("pts");
+  const [sku, setSku] = useState("all");
+  const [open, setOpen] = useState("5024033830");
+  const c = CONTRACTS[0];
+  const skuObj = SKUS.find((s) => s.id === sku);
+  /* при выборе SKU масштабируем цифры точек долей дистрибьюции (мок) */
+  const scale = skuObj ? skuObj.factU * 290 / 7008000 : 1;
+
+  const noData = INNS.flatMap((r) => r.points).filter((p) => p.st === "no-data").length;
+  const noBuy = INNS.flatMap((r) => r.points).filter((p) => p.st === "no-buy").length;
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <div className="flex flex-wrap items-start gap-x-10 gap-y-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xl font-bold text-slate-800">Авексима · {Q.label}</span>
+              <Badge tone="green">Прямой</Badge>
+              <Badge tone="amber">Спасатель: Константа</Badge>
+            </div>
+            <div className="text-sm text-slate-500 mt-1">расчёт от закупок (СТУ) · план {fmt(c.planRub)} ₽ СИП · бонус {fmt(c.budget)} ₽ + доп. {fmt(c.extra)} ₽</div>
+          </div>
+          <div className="flex gap-8">
+            {[["Исполнение", c.pct + "%", "темп " + Q.pace + "%"], ["Прогноз", c.forecast + "%", "run-rate"], ["Прогноз (сезон.)", "96%", "июнь ×1,07"], ["Риск", "Средний", "2 SKU · 1 точка"]].map(([t, v, s], i) => (
+              <div key={i}>
+                <div className="text-xs text-slate-400">{t}</div>
+                <div className={`text-xl font-bold tabular-nums ${i === 0 ? "text-amber-600" : "text-slate-800"}`}>{v}</div>
+                <div className="text-xs text-slate-400">{s}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={goScenario} className="ml-auto text-sm px-4 py-2 rounded-lg bg-[#0F4C81] text-white font-semibold">Сценарий буста →</button>
+        </div>
+        <div className="mt-4"><Pulse pct={c.pct} forecast={c.forecast} /></div>
+      </Card>
+
+      <Tabs active={tab} onChange={setTab} tabs={[["pts", "ИНН и точки"], ["sku", "SKU и план"], ["src", "Три источника"], ["money", "Деньги и документы"]]} />
+
+      {tab === "pts" && (
+        <Card
+          title="Клиенты в контракте · 8 ИНН · 41 точка"
+          right={
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-400">Фильтр по SKU:</span>
+              <select value={sku} onChange={(e) => setSku(e.target.value)} className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white font-medium text-slate-700">
+                <option value="all">Все SKU</option>
+                {SKUS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          }
+        >
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            <Badge tone="green">согласовано ранее: 6 ИНН</Badge>
+            <Badge tone="blue">новые в кв.: 2 ИНН</Badge>
+            <Badge tone="red">точек закрыто: 1</Badge>
+            <Badge tone="red">не прогружено (нет СТУ): {noData}</Badge>
+            <Badge tone="amber">не закупают: {noBuy}</Badge>
+            {skuObj && <Badge tone="indigo">дистрибьюция {skuObj.name.split(" ")[0]}: {Math.round(skuObj.distr * 41)} из 41 точки ({Math.round(skuObj.distr * 100)}%)</Badge>}
+          </div>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100">
+              <Th>ИНН · юрлицо</Th><Th>Точки</Th><Th>Закупают</Th><Th>Согласование</Th><Th>Зав / Фарм</Th><Th>ГП · Экскл.</Th><Th>{skuObj ? "Факт по SKU, ₽" : "Факт / план, ₽"}</Th><Th>Остаток, дн.</Th><Th>%</Th>
+            </tr></thead>
+            <tbody>
+              {INNS.map((r) => {
+                const isOpen = open === r.inn;
+                const buying = r.points.filter((p) => p.buy > 0).length;
+                const zav = r.points.reduce((s, p) => s + p.zav, 0), farm = r.points.reduce((s, p) => s + p.farm, 0);
+                const fct = skuObj ? Math.round(r.fact * scale / 290 * (0.8 + (r.inn.charCodeAt(3) % 5) / 10)) : r.fact;
+                const stk = skuObj ? skuObj.stock + (r.inn.charCodeAt(2) % 14) - 7 : r.stock;
+                return (
+                  <React.Fragment key={r.inn}>
+                    <tr onClick={() => setOpen(isOpen ? null : r.inn)} className={`border-b border-slate-50 cursor-pointer hover:bg-blue-50/40 ${r.tag === "закрытие" ? "bg-red-50/40" : ""}`}>
+                      <td className="py-2.5 pr-3">
+                        <div className="font-bold text-slate-800">{isOpen ? "▾" : "▸"} {r.name} {r.tag === "Спасатель" && <Badge tone="amber">Спасатель</Badge>}</div>
+                        <div className="text-xs text-slate-400 tabular-nums ml-4">{r.inn}</div>
+                      </td>
+                      <td className="py-2.5 pr-3 tabular-nums">{r.pts}</td>
+                      <td className="py-2.5 pr-3 tabular-nums">{buying} из {r.pts}</td>
+                      <td className="py-2.5 pr-3"><Badge tone={r.agreed === "ранее" ? "green" : "blue"}>{r.agreed}</Badge></td>
+                      <td className="py-2.5 pr-3 tabular-nums text-slate-600">{zav} / {farm}</td>
+                      <td className="py-2.5 pr-3"><div className="flex gap-1">{r.gp ? <Badge tone="green">ГП ✓</Badge> : <Badge tone="red">ГП —</Badge>}{r.excl && <Badge tone="indigo">Экскл.</Badge>}</div></td>
+                      <td className="py-2.5 pr-3 tabular-nums text-slate-700 font-medium">{skuObj ? fmt(fct) : `${fmt(r.fact)} / ${fmt(r.plan)}`}</td>
+                      <td className="py-2.5 pr-3"><span className={`tabular-nums font-semibold ${stk > 55 ? "text-red-700" : stk > 42 ? "text-amber-700" : "text-slate-600"}`}>{stk}</span></td>
+                      <td className="py-2.5"><PctCell pct={Math.round((r.fact / r.plan) * 100)} /></td>
+                    </tr>
+                    {isOpen && (
+                      <tr><td colSpan={9} className="bg-slate-50/70 px-3 pb-3">
+                        <table className="w-full text-sm mt-1">
+                          <thead><tr className="border-b border-slate-200/60">
+                            <Th className="pl-6">Точка</Th><Th>{skuObj ? "Закупки SKU, ₽/кв." : "Закупки, ₽/кв."}</Th><Th>Зав в ФА</Th><Th>Фарм в ФА</Th><Th>Остаток, дн.</Th><Th>Статус</Th>
+                          </tr></thead>
+                          <tbody>
+                            {r.points.map((p, j) => {
+                              const [lbl, tone] = PT_STATUS[p.st];
+                              const pBuy = skuObj && p.buy ? Math.round(p.buy * skuObj.distr * 0.9) : p.buy;
+                              const skuHere = !skuObj || p.buy === 0 ? true : (j + r.inn.charCodeAt(4)) % 3 !== 0;
+                              return (
+                                <tr key={j} className={`border-b border-slate-100/60 ${p.st !== "ok" ? "text-slate-400" : "text-slate-700"}`}>
+                                  <td className="py-2 pr-3 pl-6">{p.addr}</td>
+                                  <td className="py-2 pr-3 tabular-nums font-medium">{skuObj ? (skuHere && pBuy ? fmt(pBuy) : <span className="text-amber-600">SKU нет в точке</span>) : (p.buy ? fmt(p.buy) : "0")}</td>
+                                  <td className="py-2 pr-3 tabular-nums">{p.zav}</td>
+                                  <td className="py-2 pr-3 tabular-nums">{p.farm}</td>
+                                  <td className="py-2 pr-3 tabular-nums">{p.stock ?? "—"}</td>
+                                  <td className="py-2">{lbl ? <Badge tone={tone}>{lbl}</Badge> : <Badge tone="green">закупает</Badge>}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </td></tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="mt-3 text-xs text-slate-400">Остатки — из МДЛП/ГИС МТ, в днях запаса при текущем темпе продаж. «Не прогружена» — точка в согласованном списке, но СТУ не передаёт данные: запросить выгрузку у клиента.</div>
+        </Card>
+      )}
+
+      {tab === "sku" && (
+        <Card title="Контрактуемые SKU · 6 из 10 в справочнике МФ" right={<span className="text-xs text-slate-400">условия и списки — из MatchFlow автоматически</span>}>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100">
+              <Th>SKU</Th><Th>Расчёт от</Th><Th>Инвестиция</Th><Th>План, уп.</Th><Th>Факт, уп.</Th><Th>Дистрибьюция</Th><Th>Остаток, дн.</Th><Th className="w-40">Пульс</Th><Th>Прогноз</Th>
+            </tr></thead>
+            <tbody>
+              {SKUS.map((s, i) => {
+                const pct = Math.round((s.factU / s.planU) * 100);
+                return (
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-2.5 pr-3 font-bold text-slate-800">{s.name}</td>
+                    <td className="py-2.5 pr-3"><Badge tone={s.basis === "Закупки" ? "blue" : "indigo"}>{s.basis}</Badge></td>
+                    <td className="py-2.5 pr-3 tabular-nums">{s.inv}%</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{fmt(s.planU)}</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{fmt(s.factU)}</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{Math.round(s.distr * 41)} из 41 ({Math.round(s.distr * 100)}%)</td>
+                    <td className="py-2.5 pr-3"><span className={`tabular-nums font-semibold ${s.stock > 55 ? "text-red-700" : s.stock > 42 ? "text-amber-700" : "text-slate-600"}`}>{s.stock}</span></td>
+                    <td className="py-2.5 pr-3"><Pulse pct={pct} forecast={s.fc} /></td>
+                    <td className="py-2.5"><span className={`font-semibold tabular-nums ${s.risk === "high" ? "text-red-700" : s.risk === "mid" ? "text-amber-700" : "text-emerald-700"}`}>{s.fc}%</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="text-xs font-semibold text-slate-500 mb-2">Вне маркетинга (потенциал расширения контракта):</div>
+            <div className="flex flex-wrap gap-1.5">{SKUS_OFF.map((s, i) => <Badge key={i}>{s}</Badge>)}</div>
+          </div>
+        </Card>
+      )}
+
+      {tab === "src" && (
+        <Card title="Сверка трёх источников · закупки за квартал, ₽ СИП" right={<Badge tone="amber">макс. расхождение 6,2%</Badge>}>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100">
+              <Th>SKU</Th><Th>СТУ аптек</Th><Th>МДЛП / ГИС МТ</Th><Th>Срез производителя</Th><Th>Δ СТУ↔срез</Th>
+            </tr></thead>
+            <tbody>
+              {[["МЕТРОМИКОН-НЕО супп. №14", 1682000, 1654000, 1841000, 9.5], ["НОБАЗИТ ФОРТЕ таб. №20", 620000, 611000, 628000, 1.3], ["ТАРЖИФОРТ супп. ваг. №10", 1657000, 1630000, 1702000, 2.7], ["НОБАЗИТ таб. 250мг №20", 784000, 769000, 811000, 3.4], ["АЦИКЛОВИР-АВЕКСИМА таб. №20", 1259000, 1241000, 1296000, 2.9], ["ПАРАЦЕТАМОЛ-АВЕКСИМА таб. №20", 1006000, 987000, 1163000, 15.6]].map(([n, a, b, v, d], i) => (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="py-2.5 pr-3 font-bold text-slate-800">{n}</td>
+                  <td className="py-2.5 pr-3 tabular-nums">{fmt(a)}</td>
+                  <td className="py-2.5 pr-3 tabular-nums">{fmt(b)}</td>
+                  <td className="py-2.5 pr-3 tabular-nums">{fmt(v)}</td>
+                  <td className="py-2.5"><span className={`font-semibold tabular-nums ${d > 8 ? "text-red-700" : d > 4 ? "text-amber-700" : "text-emerald-700"}`}>{String(d).replace(".", ",")}%</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-4 grid md:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3"><span className="font-bold text-slate-700">Расчётный источник:</span> закупки СТУ — по нему считается % исполнения и премия.</div>
+            <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3"><span className="font-bold text-amber-800">Срез выше СТУ на 6,2%:</span> вероятны отгрузки вне списка или лаг СТУ → экран «Сверка».</div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3"><span className="font-bold text-slate-700">Остатки:</span> в среднем 38 дней; МЕТРОМИКОН-НЕО — 71 день (затоварка тормозит дозакупку).</div>
+          </div>
+        </Card>
+      )}
+
+      {tab === "money" && (
+        <Card title="Денежный цикл · влияет на премию">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100">
+              <Th>Период</Th><Th>Бонус, ₽</Th><Th>Акт (60 к.д.)</Th><Th>Оплата (90 к.д.)</Th><Th>ДЗ</Th><Th>В премию</Th>
+            </tr></thead>
+            <tbody>
+              {[["4 кв. 2025", "1 222 796", "выставлен 28.01", "оплачен 19.02", "—", ["green", "учтён"]], ["1 кв. 2026", "967 236", "выставлен 14.04", "оплачен 03.06", "—", ["green", "учтён"]], ["2 кв. 2026 (прогноз)", "1 487 000", "дедлайн 29.08", "дедлайн 28.09", "—", ["blue", "прогноз"]]].map((r, i) => (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="py-2.5 pr-3 font-bold text-slate-800">{r[0]}</td>
+                  <td className="py-2.5 pr-3 tabular-nums">{r[1]}</td>
+                  <td className="py-2.5 pr-3">{r[2]}</td><td className="py-2.5 pr-3">{r[3]}</td><td className="py-2.5 pr-3">{r[4]}</td>
+                  <td className="py-2.5"><Badge tone={r[5][0]}>{r[5][1]}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-4 text-sm text-slate-500 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+            Правило премии: акт ≤ 60 к.д. после квартала, деньги ≤ 90 к.д.; ДЗ свыше 90 к.д. вычёркивается из выполнения плана. Условия акций в МФ/ФА сверяются со сценарием ОКЭ автоматически.
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ── Экран · Сверка ── */
+
+function ReconScreen() {
+  const [resolved, setResolved] = useState({});
+  const queue = [
+    { v: "АПТЕКА-ХОЛДИНГ ООО (срез: 7728449120)", cands: [["ООО «Аптека Холдинг», 7728449120 · 12 точек", 96], ["ООО «АХ-Фарм», 7728001244 · 3 точки", 41]] },
+    { v: "ИП ТЕРЕХОВА М.Н. (срез: 421810647715)", cands: [["ИП Терехова Марина Николаевна, 421810647715 · 2 точки", 99]] },
+    { v: "БУДЬТЕ ЗДОРОВЫ (срез: ИНН не указан)", cands: [["ООО «БУДЬТЕ ЗДОРОВЫ», 0269037783 · Уфа · 8 точек", 78], ["ООО «Будьте Здоровы+», 7716220411 · Москва · 4 точки", 64]] },
+    { v: "ВЕТА ООО (срез: 7410005083)", cands: [["Вета, ООО · 7410005083 · 5 точек", 97]] },
+  ];
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-5">
+      <div className="space-y-5">
+        <Card title="Загрузка среза производителя">
+          <div className="border-2 border-dashed border-slate-300 rounded-xl py-10 text-center text-sm text-slate-400 hover:border-[#0F4C81]/40 cursor-pointer">
+            Перетащите файл среза (xlsx)<br />или нажмите для выбора
+          </div>
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between items-center rounded-lg bg-slate-50 border border-slate-100 px-3 py-2"><span className="text-slate-700 font-medium">Авексима_срез_апр-май.xlsx</span><Badge tone="green">обработан</Badge></div>
+            <div className="flex justify-between items-center rounded-lg bg-slate-50 border border-slate-100 px-3 py-2"><span className="text-slate-700 font-medium">Акрихин_2кв.xlsx</span><Badge tone="amber">ожидается</Badge></div>
+          </div>
+        </Card>
+        <Card title="Итог автоматчинга · Авексима">
+          <div className="space-y-2 text-sm text-slate-600">
+            <div className="flex justify-between"><span>Строк в срезе (ИНН)</span><span className="tabular-nums font-bold">151</span></div>
+            <div className="flex justify-between text-emerald-700"><span>Сопоставлено автоматически (≥92%)</span><span className="tabular-nums font-bold">142</span></div>
+            <div className="flex justify-between text-amber-700"><span>Требуют подтверждения</span><span className="tabular-nums font-bold">4</span></div>
+            <div className="flex justify-between text-red-700"><span>Не найдено в базе</span><span className="tabular-nums font-bold">5</span></div>
+            <div className="pt-2 border-t border-slate-100 text-xs text-slate-400">Подтверждённые пары запоминаются — в следующем квартале матчинг пройдёт сам.</div>
+          </div>
+        </Card>
+      </div>
+      <div className="space-y-5">
+        <Card title="Очередь подтверждения" right={<Badge tone="amber">{queue.length - Object.keys(resolved).length} осталось</Badge>}>
+          <div className="space-y-3">
+            {queue.map((q, i) => (
+              <div key={i} className={`rounded-xl border px-4 py-3 ${resolved[i] ? "border-emerald-200 bg-emerald-50/50" : "border-slate-200"}`}>
+                <div className="text-sm font-bold text-slate-800 mb-2">Из среза: {q.v}</div>
+                {resolved[i] ? (
+                  <div className="text-sm text-emerald-700 font-medium">✓ Сопоставлено: {q.cands[0][0]}</div>
+                ) : (
+                  <div className="space-y-2">
+                    {q.cands.map((cd, j) => (
+                      <div key={j} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-slate-600">{cd[0]}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`tabular-nums font-bold ${cd[1] > 90 ? "text-emerald-700" : cd[1] > 70 ? "text-amber-700" : "text-slate-400"}`}>{cd[1]}%</span>
+                          <button onClick={() => setResolved({ ...resolved, [i]: true })} className="px-3 py-1 rounded-md bg-[#0F4C81] text-white text-xs font-semibold">Подтвердить</button>
+                        </div>
+                      </div>
+                    ))}
+                    <button className="text-xs text-slate-400 hover:text-slate-600">Нет совпадения — создать клиента / пропустить</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card title="Наложение: наши данные × срез производителя · по ИНН">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100">
+              <Th>ИНН · клиент</Th><Th>СТУ, ₽</Th><Th>Срез, ₽</Th><Th>Δ</Th><Th>Вероятная причина</Th>
+            </tr></thead>
+            <tbody>
+              {[["Примула+ · 6166042937", 1140000, 1163000, "2,0%", "норма"], ["АрхиМед · 5024033830", 1860000, 2096000, "12,7%", "отгрузки в 2 точки вне согласованного списка"], ["ВИТАМИНФАРМ · 2626804403", 540000, 561000, "3,9%", "норма"], ["ТД СФЕРА · 0561046931", 421000, 524000, "24,5%", "СТУ не передаёт 3 точки — запросить выгрузку"]].map((r, i) => (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="py-2.5 pr-3 font-bold text-slate-800">{r[0]}</td>
+                  <td className="py-2.5 pr-3 tabular-nums">{fmt(r[1])}</td>
+                  <td className="py-2.5 pr-3 tabular-nums">{fmt(r[2])}</td>
+                  <td className="py-2.5 pr-3 font-bold tabular-nums text-amber-700">{r[3]}</td>
+                  <td className="py-2.5 text-slate-500">{r[4]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ── Экран · Сценарий буста: внутренний + внешний (КП производителю) ── */
+
+function ScenarioScreen() {
+  const [mode, setMode] = useState("ext");
+
+  /* ВНУТРЕННИЙ буст — ресурсы ФХ в рамках текущих условий контракта */
+  const TOTAL_PTS = 41;
+  const [dist, setDist] = useState({ metro: 23, targ: 26, parac: 29 });
+  const [boost, setBoost] = useState({ promo: true, spec: false, checks: false });
+  const [addInn, setAddInn] = useState({ pz: true, vita: false });
+  const CUR = { metro: 23, targ: 26, parac: 29 };
+  const PER_PT = { metro: 26000, targ: 22500, parac: 12300 };
+  const NAMES = { metro: "МЕТРОМИКОН-НЕО", targ: "ТАРЖИФОРТ", parac: "ПАРАЦЕТАМОЛ" };
+
+  /* ВНЕШНИЙ буст — предложения в КП производителю (доп. инвестиции) */
+  const [ext, setExt] = useState({ promo2: true, komvvod: true, rotate: true, pack: false, edu: false });
+  const [kvK, setKvK] = useState(1.2); /* коэффициент ком. ввода: × стоимость упаковки */
+
+  const planRub = 9600000;
+  const baseFcRub = 8930000; /* 93% run-rate */
+
+  /* внутренний эффект */
+  const distAdd = Object.keys(dist).reduce((s, k) => s + Math.max(0, dist[k] - CUR[k]) * PER_PT[k], 0);
+  const boostAdd = (boost.promo ? 0.07 : 0) * baseFcRub + (boost.spec ? 0.04 : 0) * baseFcRub + (boost.checks ? 0.025 : 0) * baseFcRub;
+  const innAdd = (addInn.pz ? 690000 : 0) + (addInn.vita ? 410000 : 0);
+  const intAdd = distAdd + boostAdd + innAdd;
+
+  /* внешний эффект и доп. инвестиции к запросу */
+  /* 1) доп. акция закупки: 12 точек с дистрибьюцией чуть ниже среднего */
+  const promo2Eff = ext.promo2 ? 12 * 21000 : 0;
+  const promo2Inv = ext.promo2 ? Math.round(promo2Eff * 0.18) : 0; /* повышенная инвестиция 18% */
+  /* 2) ком. ввод: 8 точек с очень низким наличием; СИП МЕТРОМИКОН 475,5 ₽; 24 уп. на точку */
+  const kvUnits = 8 * 24;
+  const kvEff = ext.komvvod ? kvUnits * 475.5 : 0;
+  const kvInv = ext.komvvod ? Math.round(kvUnits * 475.5 * kvK) : 0;
+  /* 3) ротация списка: −7 незакупающих, +2 ИНН из базы ФХ */
+  const rotEff = ext.rotate ? 540000 : 0;
+  const rotInv = ext.rotate ? Math.round(rotEff * 0.112) : 0; /* станд. инвестиция на новый объём */
+  /* 4) промо-пакет категории */
+  const packEff = ext.pack ? 0.03 * baseFcRub : 0;
+  const packInv = ext.pack ? Math.round(packEff * 0.14) : 0;
+  /* 5) обучение + чеки */
+  const eduEff = ext.edu ? 0.02 * baseFcRub : 0;
+  const eduInv = ext.edu ? 60000 + Math.round(eduEff * 0.1) : 0;
+
+  const extAdd = promo2Eff + kvEff + rotEff + packEff + eduEff;
+  const extInv = promo2Inv + kvInv + rotInv + packInv + eduInv;
+
+  const pctInt = Math.round((baseFcRub + intAdd) / planRub * 100);
+  const pctAll = Math.round((baseFcRub + intAdd + extAdd) / planRub * 100);
+
+  return (
+    <div className="space-y-5">
+      {/* Результат — всегда сверху */}
+      <div className="bg-[#0F4C81] text-white rounded-xl px-6 py-5 flex flex-wrap items-center gap-x-10 gap-y-3">
+        <div>
+          <div className="text-xs opacity-70">Выполнение плана · Авексима</div>
+          <div className="text-3xl font-bold tabular-nums">93% <span className="opacity-60 text-xl">→</span> {pctInt}% <span className="opacity-60 text-xl">→</span> <span className="text-emerald-300">{pctAll}%</span></div>
+          <div className="text-xs opacity-60 mt-0.5">база → внутренний буст → с КП производителю</div>
+        </div>
+        <div>
+          <div className="text-xs opacity-70">Внутренний буст (ресурсы ФХ)</div>
+          <div className="text-2xl font-bold tabular-nums">+{fmtM(intAdd)} ₽</div>
+        </div>
+        <div>
+          <div className="text-xs opacity-70">Внешний буст (КП)</div>
+          <div className="text-2xl font-bold tabular-nums text-emerald-300">+{fmtM(extAdd)} ₽</div>
+        </div>
+        <div>
+          <div className="text-xs opacity-70">Доп. инвестиции к запросу</div>
+          <div className="text-2xl font-bold tabular-nums text-amber-300">{fmtM(extInv)} ₽</div>
+        </div>
+        <div className="ml-auto flex gap-2">
+          <button className="text-sm px-4 py-2 rounded-lg bg-white text-[#0F4C81] font-bold">Экспорт КП производителю</button>
+          <button className="text-sm px-4 py-2 rounded-lg border border-white/40 font-semibold">Сохранить сценарий</button>
+        </div>
+      </div>
+
+      <Tabs active={mode} onChange={setMode} tabs={[["ext", "Внешний буст · КП производителю"], ["int", "Внутренний буст · ресурсы ФХ"]]} />
+
+      {mode === "int" && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <Card title="1 · Допродажа SKU: дистрибьюция по точкам" right={<span className="text-xs text-slate-400">макс. {TOTAL_PTS} точки</span>}>
+            <div className="text-xs text-slate-400 mb-3">Сколько точек закупают SKU сейчас → цель. Прирост = новые точки × средняя закупка точки.</div>
+            <div className="space-y-4">
+              {Object.keys(dist).map((k) => (
+                <div key={k} className="rounded-lg border border-slate-100 px-3 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-800">{NAMES[k]}</span>
+                    <Num v={dist[k]} set={(x) => setDist({ ...dist, [k]: x })} suffix="" min={CUR[k]} max={TOTAL_PTS} />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500 mt-1.5">
+                    <span>сейчас {CUR[k]} из {TOTAL_PTS} → цель {Math.round(dist[k] / TOTAL_PTS * 100)}%</span>
+                    <span className="font-bold text-emerald-700">+{fmt(Math.max(0, dist[k] - CUR[k]) * PER_PT[k])} ₽</span>
+                  </div>
+                  <div className="relative h-2 rounded bg-slate-100 mt-1.5">
+                    <div className="absolute inset-y-0 left-0 rounded bg-[#0F4C81]/30" style={{ width: dist[k] / TOTAL_PTS * 100 + "%" }} />
+                    <div className="absolute inset-y-0 left-0 rounded bg-[#0F4C81]" style={{ width: CUR[k] / TOTAL_PTS * 100 + "%" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-sm font-bold text-slate-700 flex justify-between"><span>Итого</span><span className="text-emerald-700 tabular-nums">+{fmt(distAdd)} ₽</span></div>
+          </Card>
+
+          <Card title="2 · Буст-инструменты ФА">
+            <div className="space-y-2.5 text-sm">
+              {[["promo", "Промо-заказ ФА", "+7% к прогнозу · история 4 кв."], ["spec", "Спецакция фармацевтам", "+4% · настройка"], ["checks", "Чеки ФА по красным SKU", "+2,5% · настройка"]].map(([k, n, e]) => (
+                <label key={k} className={`flex items-start gap-3 cursor-pointer rounded-lg border px-3 py-2.5 ${boost[k] ? "border-[#0F4C81]/40 bg-blue-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={boost[k]} onChange={() => setBoost({ ...boost, [k]: !boost[k] })} className="mt-1 w-4 h-4" />
+                  <span><span className="font-bold text-slate-800">{n}</span><div className="text-xs text-slate-500">{e}</div></span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 text-sm font-bold text-slate-700 flex justify-between"><span>Итого</span><span className="text-emerald-700 tabular-nums">+{fmt(boostAdd)} ₽</span></div>
+            <div className="mt-3 text-xs text-slate-400 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">ИИ: остатки МЕТРОМИКОНА — 71 день. Промо-заказ направить на ТАРЖИФОРТ и АЦИКЛОВИР; по МЕТРОМИКОНУ — чеки ФА (вымывание).</div>
+          </Card>
+
+          <Card title="3 · Добавить аптеки" right={<Badge tone="green">разрешено контрактом</Badge>}>
+            <div className="space-y-2.5 text-sm">
+              {[["pz", "ООО «Планета Вита», Тула", "14 точек · оценка +690 000 ₽/кв.", true], ["vita", "ООО «Здоровый Город», Рязань", "8 точек · оценка +410 000 ₽/кв.", false]].map(([k, n, e]) => (
+                <label key={k} className={`flex items-start gap-3 cursor-pointer rounded-lg border px-3 py-2.5 ${addInn[k] ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={addInn[k]} onChange={() => setAddInn({ ...addInn, [k]: !addInn[k] })} className="mt-1 w-4 h-4" />
+                  <span><span className="font-bold text-slate-800">{n}</span><div className="text-xs text-slate-500">{e}</div></span>
+                </label>
+              ))}
+              <button className="text-sm text-[#0F4C81] font-semibold hover:underline">Подобрать ещё из базы ФХ →</button>
+            </div>
+            <div className="mt-3 text-sm font-bold text-slate-700 flex justify-between"><span>Итого</span><span className="text-emerald-700 tabular-nums">+{fmt(innAdd)} ₽</span></div>
+            <div className="mt-2 text-xs text-slate-400">Если контракт не разрешает свободное добавление — аптеки уходят в КП производителю как запрос на расширение списка.</div>
+          </Card>
+        </div>
+      )}
+
+      {mode === "ext" && (
+        <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-5">
+          {/* ОБОСНОВАНИЕ — система собирает сама */}
+          <div className="space-y-5">
+            <Card title="Обоснование для производителя" right={<span className="text-xs text-slate-400">собирается автоматически</span>}>
+              <div className="space-y-3 text-sm">
+                <div className="rounded-lg border border-slate-100 px-3 py-2.5">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Прогноз выполнения</div>
+                  <div className="flex justify-between"><span className="text-slate-600">Контракт в целом</span><span className="tabular-nums font-bold text-amber-700">93%</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">МЕТРОМИКОН-НЕО</span><span className="tabular-nums font-bold text-red-700">78%</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">ПАРАЦЕТАМОЛ</span><span className="tabular-nums font-bold text-amber-700">80%</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Остальные 4 SKU</span><span className="tabular-nums font-bold text-emerald-700">95–109%</span></div>
+                </div>
+                <div className="rounded-lg border border-slate-100 px-3 py-2.5">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Рынок · DSM</div>
+                  <div className="flex justify-between"><span className="text-slate-600">Категория (рынок), рост г/г</span><span className="tabular-nums font-bold text-emerald-700">+6%</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">МЕТРОМИКОН у нас vs рынок</span><span className="tabular-nums font-bold text-red-700">−9 п.п.</span></div>
+                  <div className="text-xs text-slate-400 mt-1">Отставание от рынка → проблема не в спросе, а в дистрибьюции и дефектуре.</div>
+                </div>
+                <div className="rounded-lg border border-red-100 bg-red-50/40 px-3 py-2.5">
+                  <div className="text-xs font-bold text-red-700 uppercase tracking-wide mb-1.5">Дефектура на дистрибьюторах</div>
+                  <div className="flex justify-between"><span className="text-slate-600">БСС · МЕТРОМИКОН</span><span className="tabular-nums font-bold text-red-700">14 дней</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Гранд Капитал · ПАРАЦЕТАМОЛ</span><span className="tabular-nums font-bold text-red-700">9 дней</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Потерянные закупки (оценка)</span><span className="tabular-nums font-bold">≈ 318 000 ₽</span></div>
+                </div>
+                <div className="rounded-lg border border-slate-100 px-3 py-2.5">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Согласованный список</div>
+                  <div className="flex justify-between"><span className="text-slate-600">Закрыто точек (реестр)</span><span className="tabular-nums font-bold text-red-700">1</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Не закупают весь квартал</span><span className="tabular-nums font-bold text-amber-700">7</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Не прогружены (нет СТУ)</span><span className="tabular-nums font-bold text-amber-700">3</span></div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* ПРЕДЛОЖЕНИЯ СИСТЕМЫ */}
+          <div className="space-y-5">
+            <Card title="Предложения системы → в КП" right={<span className="text-xs text-slate-400">включай нужные — итог пересчитывается сверху</span>}>
+              <div className="space-y-3 text-sm">
+                <label className={`flex items-start gap-3 cursor-pointer rounded-xl border px-4 py-3 ${ext.promo2 ? "border-[#0F4C81]/40 bg-blue-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={ext.promo2} onChange={() => setExt({ ...ext, promo2: !ext.promo2 })} className="mt-1 w-4 h-4" />
+                  <span className="flex-1">
+                    <div className="flex justify-between gap-3 flex-wrap">
+                      <span className="font-bold text-slate-800">Доп. акция на закупку — точки с дистрибьюцией ниже среднего</span>
+                      <span className="tabular-nums text-xs"><span className="text-emerald-700 font-bold">+{fmt(promo2Eff)} ₽</span> · инвестиции <span className="font-bold text-amber-700">{fmt(promo2Inv)} ₽</span></span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">12 точек закупают МЕТРОМИКОН/ПАРАЦЕТАМОЛ на 30–60% ниже среднего по контракту. Повышенная инвестиция 18% на доп. объём этих точек.</div>
+                  </span>
+                </label>
+
+                <label className={`flex items-start gap-3 cursor-pointer rounded-xl border px-4 py-3 ${ext.komvvod ? "border-[#0F4C81]/40 bg-blue-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={ext.komvvod} onChange={() => setExt({ ...ext, komvvod: !ext.komvvod })} className="mt-1 w-4 h-4" />
+                  <span className="flex-1">
+                    <div className="flex justify-between gap-3 flex-wrap">
+                      <span className="font-bold text-slate-800">Коммерческий ввод — точки без наличия SKU</span>
+                      <span className="tabular-nums text-xs"><span className="text-emerald-700 font-bold">+{fmt(kvEff)} ₽</span> · инвестиции <span className="font-bold text-amber-700">{fmt(kvInv)} ₽</span></span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1.5">8 точек: МЕТРОМИКОН отсутствует или остаток нулевой. Ввод {kvUnits} уп. (по 24 на точку), СИП 475,5 ₽.</div>
+                    <div className="flex items-center gap-3 mt-2" onClick={(e) => e.preventDefault()}>
+                      <span className="text-xs text-slate-500">Инвестиция, × стоимости упаковки (0,8–1,5):</span>
+                      <Num v={kvK} set={(x) => setKvK(Math.round(x * 10) / 10)} step={0.1} suffix="×" min={0.8} max={1.5} />
+                    </div>
+                  </span>
+                </label>
+
+                <label className={`flex items-start gap-3 cursor-pointer rounded-xl border px-4 py-3 ${ext.rotate ? "border-[#0F4C81]/40 bg-blue-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={ext.rotate} onChange={() => setExt({ ...ext, rotate: !ext.rotate })} className="mt-1 w-4 h-4" />
+                  <span className="flex-1">
+                    <div className="flex justify-between gap-3 flex-wrap">
+                      <span className="font-bold text-slate-800">Ротация согласованного списка</span>
+                      <span className="tabular-nums text-xs"><span className="text-emerald-700 font-bold">+{fmt(rotEff)} ₽</span> · инвестиции <span className="font-bold text-amber-700">{fmt(rotInv)} ₽</span></span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">Заменить 7 незакупающих + 1 закрытую точку на 2 ИНН из базы ФХ (10 точек с подтверждённым оборотом категории). Стандартная инвестиция на новый объём.</div>
+                  </span>
+                </label>
+
+                <label className={`flex items-start gap-3 cursor-pointer rounded-xl border px-4 py-3 ${ext.pack ? "border-[#0F4C81]/40 bg-blue-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={ext.pack} onChange={() => setExt({ ...ext, pack: !ext.pack })} className="mt-1 w-4 h-4" />
+                  <span className="flex-1">
+                    <div className="flex justify-between gap-3 flex-wrap">
+                      <span className="font-bold text-slate-800">Промо-пакет: объединить SKU в категорию</span>
+                      <span className="tabular-nums text-xs"><span className="text-emerald-700 font-bold">+{fmt(packEff)} ₽</span> · инвестиции <span className="font-bold text-amber-700">{fmt(packInv)} ₽</span></span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">МЕТРОМИКОН + ТАРЖИФОРТ + НОБАЗИТ — комплексное промо «корзиной»: единые условия, выше средний чек закупки.</div>
+                  </span>
+                </label>
+
+                <label className={`flex items-start gap-3 cursor-pointer rounded-xl border px-4 py-3 ${ext.edu ? "border-[#0F4C81]/40 bg-blue-50/40" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <input type="checkbox" checked={ext.edu} onChange={() => setExt({ ...ext, edu: !ext.edu })} className="mt-1 w-4 h-4" />
+                  <span className="flex-1">
+                    <div className="flex justify-between gap-3 flex-wrap">
+                      <span className="font-bold text-slate-800">Обучение + чеки фармацевтам</span>
+                      <span className="tabular-nums text-xs"><span className="text-emerald-700 font-bold">+{fmt(eduEff)} ₽</span> · инвестиции <span className="font-bold text-amber-700">{fmt(eduInv)} ₽</span></span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">Стимул продаж (вымывание остатков → дозакупка): вебинар по категории + чеки ФА на красные SKU за счёт доп. бюджета производителя.</div>
+                  </span>
+                </label>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-between gap-3 text-sm font-bold">
+                <span className="text-slate-700">Итого внешний буст</span>
+                <span className="tabular-nums"><span className="text-emerald-700">+{fmt(extAdd)} ₽ объёма</span> · <span className="text-amber-700">{fmt(extInv)} ₽ доп. инвестиций к запросу</span></span>
+              </div>
+            </Card>
+
+            <Card title="ИИ-обоснование для переговоров" right={<button className="text-xs text-[#0F4C81] font-bold">Вставить в КП</button>}>
+              <div className="text-sm text-slate-700 leading-relaxed space-y-2">
+                <p>«Категория по DSM растёт на +6% г/г, при этом МЕТРОМИКОН-НЕО в наших аптеках отстаёт от рынка на 9 п.п. Причина не в спросе: 14 дней дефектуры на БСС (потеряно ≈ 318 тыс. ₽ закупок) и 20 точек согласованного списка с дистрибьюцией ниже среднего или нулевым наличием.</p>
+                <p>Предлагаем доп. инвестиции {fmt(extInv)} ₽: точечная акция закупки по 12 точкам, коммерческий ввод в 8 точек ({kvK}× стоимости упаковки) и ротация 8 неработающих позиций списка. Это выводит контракт с 93% на {pctAll}% — прирост +{fmtM(extAdd + intAdd)} ₽ при инвестиционной нагрузке {((extInv + 1075000) / (baseFcRub + intAdd + extAdd) * 100).toFixed(1).replace(".", ",")}% против текущих 11,2%. Внутренние инструменты ФХ (промо-заказ, допродажа дистрибьюции) уже включены с нашей стороны.»</p>
+              </div>
+              <div className="mt-3 text-xs text-slate-400">Текст собирается из обоснования слева и включённых предложений; КАМ правит перед экспортом.</div>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── ЗАКРЫТЫЙ КОНТУР · Экономика сценария (Байчоров / аналитик) ── */
+
+const LockBanner = ({ who = "руководитель КАМ (Байчоров), аналитик ОКЭ (Тимур)" }) => (
+  <div className="rounded-xl border border-violet-200 bg-violet-50 px-5 py-3 text-sm text-violet-900 flex items-center gap-3">
+    <span className="text-lg">🔒</span>
+    <span><span className="font-bold">Закрытый контур.</span> Экран виден только по правам доступа: {who}. КАМ этот раздел не видит.</span>
+  </div>
+);
+
+function EconomicsScreen() {
+  const [split, setSplit] = useState({ apt: 55, zav: 12, farm: 10 });
+  const invTotal = 1148000; /* инвестиции по активному сценарию Авексимы */
+  const aptB = Math.round(invTotal * split.apt / 100), zavB = Math.round(invTotal * split.zav / 100), farmB = Math.round(invTotal * split.farm / 100);
+  const fh = invTotal - aptB - zavB - farmB;
+  return (
+    <div className="space-y-5">
+      <LockBanner />
+      <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-5">
+        <Card title="Распределение инвестиций · сценарий Авексима v2">
+          <div className="space-y-3 text-sm">
+            {[["Бонус аптеке", "apt"], ["Бонус заведующей", "zav"], ["Бонус фармацевту", "farm"]].map(([n, k]) => (
+              <div key={k} className="flex items-center justify-between"><span className="text-slate-700 font-medium">{n}</span><Num v={split[k]} set={(x) => setSplit({ ...split, [k]: x })} /></div>
+            ))}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100"><span className="text-slate-500">Комиссия ФХ (остаток)</span><span className="tabular-nums font-bold text-[#0F4C81] text-base">{100 - split.apt - split.zav - split.farm}%</span></div>
+          </div>
+        </Card>
+        <Card title="Результат — три стороны">
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Производителю</div>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">Плановый объём</span><span className="tabular-nums font-bold">10,25 млн ₽</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Итого инвестиции</span><span className="tabular-nums font-bold">{fmt(invTotal)} ₽</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Инвестиции / объём</span><span className="tabular-nums">11,2%</span></div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Аптекам</div>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">Бонус аптеке</span><span className="tabular-nums font-bold">{fmt(aptB)} ₽</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Заведующим</span><span className="tabular-nums">{fmt(zavB)} ₽</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Фармацевтам</span><span className="tabular-nums">{fmt(farmB)} ₽</span></div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-[#0F4C81]/30 bg-blue-50/30 p-4">
+              <div className="text-xs font-bold text-[#0F4C81] uppercase tracking-wide">ФармХаб</div>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">Комиссия ФХ</span><span className="tabular-nums font-bold text-[#0F4C81] text-base">{fmt(fh)} ₽</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Маржа от инвестиций</span><span className="tabular-nums">{Math.round(fh / invTotal * 100)}%</span></div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-slate-400">КАМ в своём сценарии видит только объём и требуемые инвестиции производителя. Распределение и маржа ФХ — здесь.</div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ── ЗАКРЫТЫЙ КОНТУР · Спасатели ── */
+
+function SaviorsScreen() {
+  const [share, setShare] = useState(70);      /* % от дельты невыполнения */
+  const [retro, setRetro] = useState(true);    /* есть ли уже ретро клиента */
+  const [savPct, setSavPct] = useState(11);    /* повышенный % Спасателю */
+
+  const plan = 11200000, fcRub = 7392000;      /* Акрихин: прогноз 66% */
+  const invPct = 13, basePay = 8, retroPct = retro ? 8 : 0;
+  const delta = plan - fcRub;
+  const savVol = Math.round(delta * share / 100);
+  const newPct = Math.round((fcRub + savVol) / plan * 100);
+  const invBase = fcRub * invPct / 100;
+  const invWith = (fcRub + savVol) * invPct / 100;
+  const marginBase = fcRub * (invPct - basePay) / 100;
+  const marginSav = savVol * (invPct - retroPct - Math.max(0, savPct - retroPct)) / 100;
+  /* проще: выплата Спасателю на его объёме = max(savPct, ретро) */
+  const payToSav = savVol * Math.max(savPct, retroPct) / 100;
+  const marginWith = marginBase + savVol * invPct / 100 - payToSav;
+
+  return (
+    <div className="space-y-5">
+      <LockBanner />
+      <div className="bg-[#0F4C81] text-white rounded-xl px-6 py-5 flex flex-wrap items-center gap-x-12 gap-y-3">
+        <div><div className="text-xs opacity-70">Контракт · Акрихин</div><div className="text-3xl font-bold tabular-nums">66% → {newPct}%</div></div>
+        <div><div className="text-xs opacity-70">Объём Спасателя</div><div className="text-2xl font-bold tabular-nums">{fmtM(savVol)} ₽</div></div>
+        <div><div className="text-xs opacity-70">Инвестиции в ФХ (тотал)</div><div className="text-2xl font-bold tabular-nums">{fmtM(invBase)} → {fmtM(invWith)} ₽</div></div>
+        <div><div className="text-xs opacity-70">Маржа ФХ</div><div className={`text-2xl font-bold tabular-nums ${marginWith >= marginBase ? "text-emerald-300" : "text-red-300"}`}>{fmtM(marginBase)} → {fmtM(marginWith)} ₽</div></div>
+        <button className="ml-auto text-sm px-4 py-2 rounded-lg bg-white text-[#0F4C81] font-bold">Экспорт КП Спасателю</button>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-5">
+        <Card title="Параметры расчёта">
+          <div className="space-y-4 text-sm">
+            <div>
+              <div className="flex justify-between text-slate-500 text-xs mb-1"><span>1 · Прогноз контракта</span><span>run-rate</span></div>
+              <div className="flex justify-between font-bold text-slate-800"><span>Акрихин, {Q.label}</span><span className="tabular-nums">66% · {fmtM(fcRub)} из {fmtM(plan)} ₽</span></div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500 mb-1">2 · Недовыполнение (дельта)</div>
+              <div className="font-bold text-red-700 tabular-nums text-lg">−{fmtM(delta)} ₽</div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-700 font-medium">3 · Ретро клиента уже есть</span>
+              <button onClick={() => setRetro(!retro)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${retro ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>{retro ? "Да · 8%" : "Нет"}</button>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-700 font-medium">4 · Объём Спасателя от дельты</span>
+              <Num v={share} set={setShare} step={5} max={100} />
+            </div>
+            <div className="text-xs text-slate-400 -mt-2">= {fmt(savVol)} ₽ · можно задать и в рублях</div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-700 font-medium">6 · Повышенный % Спасателю</span>
+              <Num v={savPct} set={setSavPct} max={20} />
+            </div>
+            <div className="text-xs text-slate-400 -mt-2">стандартная выплата клиентам — {basePay}% · входящая инвестиция производителя — {invPct}%</div>
+          </div>
+        </Card>
+
+        <div className="space-y-5">
+          <Card title="5 и 7 · Экономика: без Спасателя / со Спасателем">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-100"><Th></Th><Th>Без Спасателя</Th><Th>Со Спасателем</Th><Th>Δ</Th></tr></thead>
+              <tbody>
+                {[
+                  ["Объём контракта, ₽", fcRub, fcRub + savVol],
+                  ["Выполнение плана", "66%", newPct + "%"],
+                  ["Инвестиции производителя в ФХ (" + invPct + "%), ₽", invBase, invWith],
+                  ["Выплаты клиентам (станд. " + basePay + "%), ₽", fcRub * basePay / 100, fcRub * basePay / 100],
+                  ["Выплата Спасателю (" + Math.max(savPct, retroPct) + "%), ₽", 0, payToSav],
+                  ["Маржа ФХ, ₽", marginBase, marginWith],
+                ].map((r, i) => {
+                  const num = typeof r[1] === "number";
+                  const d = num ? r[2] - r[1] : null;
+                  return (
+                    <tr key={i} className={`border-b border-slate-50 ${i === 5 ? "font-bold bg-blue-50/40" : ""}`}>
+                      <td className="py-2.5 pr-3 text-slate-700">{r[0]}</td>
+                      <td className="py-2.5 pr-3 tabular-nums">{num ? fmt(r[1]) : r[1]}</td>
+                      <td className="py-2.5 pr-3 tabular-nums">{num ? fmt(r[2]) : r[2]}</td>
+                      <td className={`py-2.5 tabular-nums font-semibold ${d === null ? "" : d >= 0 ? "text-emerald-700" : "text-red-700"}`}>{d === null ? "" : (d >= 0 ? "+" : "−") + fmt(Math.abs(d))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="mt-3 text-xs text-slate-500 rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 leading-relaxed">
+              Логика: Спасатель добирает дельту невыполнения за повышенный %. Маржа ФХ на его объёме = инвестиция производителя ({invPct}%) − выплата Спасателю ({Math.max(savPct, retroPct)}%). Если повышенный % приближается к входящей инвестиции, маржа на объёме Спасателя стремится к нулю — но контракт выходит на план: это цена удержания производителя. Дельта видна сразу.
+            </div>
+          </Card>
+          <Card title="Спасатели в портфеле">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-100"><Th>Юрлицо</Th><Th>Регион</Th><Th>Статус</Th><Th>Контракты</Th><Th>ГП</Th></tr></thead>
+              <tbody>
+                {[["ООО «АрхиМед»", "Московская обл.", "Основной", "Авексима, Татхимфарм", "✓"], ["ООО «ДИСАФАРМ»", "Ростовская обл.", "Основной", "Татхимфарм", "✓"], ["ООО «Примула+»", "Ростовская обл.", "Да", "Акрихин", "✓"], ["ООО «ВИТАМИНФАРМ»", "КЧР", "Да", "Акрихин", "✓"], ["Константа", "Москва", "Да", "Авексима", "✓"]].map((r, i) => (
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-2 pr-3 font-bold text-slate-800">{r[0]}</td><td className="py-2 pr-3 text-slate-600">{r[1]}</td>
+                    <td className="py-2 pr-3"><Badge tone={r[2] === "Основной" ? "indigo" : "slate"}>{r[2]}</Badge></td>
+                    <td className="py-2 pr-3 text-slate-600">{r[3]}</td><td className="py-2 text-emerald-700">{r[4]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Экран · Моя премия ── */
+
+const SCALE = [["< 85%", 0], ["85–95%", 0.9], ["95,1–105%", 1], ["105,1–115%", 1.1], ["115,1–130%", 1.2], ["> 130%", 1.5]];
+const coefFor = (p) => (p < 85 ? 0 : p <= 95 ? 0.9 : p <= 105 ? 1 : p <= 115 ? 1.1 : p <= 130 ? 1.2 : 1.5);
+
+function PremiumScreen() {
+  const [sim, setSim] = useState({ akrihin: 0, alpen: 0, rusfik: 0 });
+  const plan = 20519859, baseFact = 18713000, salary = 172414;
+  const simAdd = sim.akrihin * 410000 + sim.alpen * 75000 + (sim.rusfik ? 236218 : 0);
+  const pct = ((baseFact + simAdd) / plan) * 100;
+  const k = coefFor(pct);
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5">
+      <div className="space-y-5">
+        <Card title={`Премия за ${Q.label} · прогноз`}>
+          <div className="flex flex-wrap gap-x-10 gap-y-3">
+            {[["План квартала", fmt(plan) + " ₽"], ["Прогноз факта (по актам)", fmt(baseFact + simAdd) + " ₽"], ["Выполнение", pct.toFixed(1).replace(".", ",") + "%"], ["Коэффициент", "k = " + String(k).replace(".", ",")], ["Премия (оклад × k)", fmt(salary * k) + " ₽"]].map(([t, v], i) => (
+              <div key={i}><div className="text-xs text-slate-400">{t}</div><div className={`text-2xl font-bold tabular-nums ${i === 4 ? "text-[#0F4C81]" : "text-slate-800"}`}>{v}</div></div>
+            ))}
+          </div>
+          <div className="mt-5">
+            <div className="flex h-11 rounded-xl overflow-hidden border border-slate-200 text-xs">
+              {SCALE.map(([l, c], i) => {
+                const lo = [0, 85, 95.1, 105.1, 115.1, 130.1][i], hi = [85, 95, 105, 115, 130, 999][i];
+                const active = pct >= lo && pct <= hi;
+                return (
+                  <div key={i} className={`flex-1 flex flex-col items-center justify-center border-r border-slate-200 last:border-0 ${active ? "bg-[#0F4C81] text-white font-bold" : "bg-slate-50 text-slate-500"}`}>
+                    <span>{l}</span><span>k={String(c).replace(".", ",")}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2.5 text-sm text-slate-600">
+              {pct < 95.1 ? <>До k = 1 осталось <span className="font-bold text-[#0F4C81]">{fmt(plan * 0.951 - baseFact - simAdd)} ₽</span> факта по актам — это +{fmt(salary * (1 - k))} ₽ премии.</> : pct < 105.1 ? <>До k = 1,1 осталось <span className="font-bold text-[#0F4C81]">{fmt(plan * 1.051 - baseFact - simAdd)} ₽</span>.</> : <>Порог k = {String(k).replace(".", ",")} достигнут.</>}
+            </div>
+          </div>
+        </Card>
+        <Card title="Факт по контрактам · что учтено в премии">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100"><Th>Контракт</Th><Th>План бонуса, ₽</Th><Th>Прогноз факта, ₽</Th><Th>Акт / Оплата</Th><Th>Статус</Th></tr></thead>
+            <tbody>
+              {[["Байер", 4086130, 4413000, "в срок", ["green", "учтён"]], ["Татхимфармпрепараты", 2381769, 2096000, "акт просрочен 12 дн.", ["amber", "риск"]], ["Русфик", 1662009, 1629000, "ДЗ 236 218 ₽ · 72 дн. до вычета", ["amber", "риск"]], ["Акрихин", 1506394, 994000, "в срок", ["red", "тянет вниз"]], ["Авексима", 1382400, 1487000, "в срок", ["green", "учтён"]], ["Промомед", 1359640, 1400000, "в срок", ["green", "учтён"]], ["Ядран · АСНА", 953272, 915000, "через АСНА", ["green", "учтён"]], ["Верофарм", 741303, 734000, "в срок", ["green", "учтён"]], ["Авва Рус", 660754, 628000, "в срок", ["green", "учтён"]], ["Альпен Фарма", 102408, 43000, "в срок", ["red", "тянет вниз"]]].map((r, i) => (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="py-2 pr-3 font-bold text-slate-800">{r[0]}</td>
+                  <td className="py-2 pr-3 tabular-nums">{fmt(r[1])}</td>
+                  <td className="py-2 pr-3 tabular-nums">{fmt(r[2])}</td>
+                  <td className="py-2 pr-3 text-slate-500 text-xs">{r[3]}</td>
+                  <td className="py-2"><Badge tone={r[4][0]}>{r[4][1]}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-3 text-xs text-slate-400">ДЗ свыше 90 к.д. после квартала автоматически вычёркивается из факта — система считает дни и предупреждает заранее.</div>
+        </Card>
+      </div>
+      <div className="space-y-5">
+        <Card title="Симулятор: «а если добью…»">
+          <div className="space-y-4 text-sm">
+            {[["akrihin", "Акрихин: промо-заказы", "× 410 т.₽", 4], ["alpen", "Альпен: SKU в акцию", "× 75 т.₽", 3], ["rusfik", "Русфик: закрыть ДЗ", "236 т.₽", 1]].map(([id, label, unit, max]) => (
+              <div key={id} className="flex items-center justify-between">
+                <span className="text-slate-700 font-medium">{label}</span>
+                <div className="flex items-center gap-2">
+                  <Num v={sim[id]} set={(x) => setSim({ ...sim, [id]: x })} suffix="" max={max} />
+                  <span className="text-xs text-slate-400 w-16">{unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 pt-4 border-t border-slate-100 text-sm space-y-1.5">
+            <div className="flex justify-between"><span className="text-slate-500">Выполнение</span><span className="tabular-nums font-bold">{pct.toFixed(1).replace(".", ",")}%</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Премия</span><span className="tabular-nums font-bold text-[#0F4C81] text-lg">{fmt(salary * k)} ₽</span></div>
+          </div>
+        </Card>
+        <Card title="Что добить в первую очередь">
+          <div className="space-y-2.5 text-sm">
+            {[["1 · Русфик — дожать оплату ДЗ", "236 218 ₽ факта без новой работы, иначе через 72 дня вычет"], ["2 · Акрихин — промо-заказ по 3 красным SKU", "≈ 410 000 ₽ к факту за один запуск, сценарий готов"], ["3 · Татхимфарм — выставить акт за 1 кв.", "просрочка 12 дней, под угрозой 2,38 млн факта"]].map(([t, s], i) => (
+              <div key={i} className="rounded-lg border border-slate-100 px-3 py-2.5"><div className="font-bold text-slate-800">{t}</div><div className="text-xs text-slate-500 mt-0.5">{s}</div></div>
+            ))}
+          </div>
+        </Card>
+        <Card title="Дисциплина контракта (входной фильтр)">
+          <div className="space-y-2 text-sm">
+            {[["Согласование с ОКЭ", true], ["Акции МФ/ФА = сценарий ОКЭ", true], ["Документы в 1С ДО + Я.диск", true], ["История коммуникаций в CRM", false]].map(([t, ok], i) => (
+              <div key={i} className="flex justify-between items-center"><span className="text-slate-700">{t}</span><Badge tone={ok ? "green" : "red"}>{ok ? "✓" : "1 контракт"}</Badge></div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ── ЗАКРЫТЫЙ КОНТУР · Свод КАМ ── */
+
+const TEAM = [
+  { kam: "Скокнина Анна", plan: 20337782, fc: 18713000, pct: 73, contracts: 16, risk: 3, dz: 236218, acts: 1 },
+  { kam: "Карнафель Марина", plan: 20908419, fc: 20490000, pct: 78, contracts: 14, risk: 1, dz: 0, acts: 0 },
+  { kam: "Баскакова Софья", plan: 16854797, fc: 14327000, pct: 68, contracts: 12, risk: 4, dz: 412000, acts: 2 },
+  { kam: "Валова Олеся · АСНА", plan: 31200000, fc: 29950000, pct: 77, contracts: 38, risk: 2, dz: 0, acts: 0 },
+];
+
+function TeamScreen({ openContract }) {
+  const [open, setOpen] = useState("Скокнина Анна");
+  return (
+    <div className="space-y-5">
+      <LockBanner who="руководитель КАМ (Байчоров), директор" />
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
+        <Card title={`Свод КАМ · ${Q.label}`} right={<span className="text-xs text-slate-400">цвет % — темп к доле квартала ({Q.pace}%), не к 100%</span>}>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100">
+              <Th>КАМ</Th><Th>План, ₽</Th><Th>Прогноз, ₽</Th><Th>Темп</Th><Th>Контракты</Th><Th>Под риском</Th><Th>ДЗ / Акты</Th>
+            </tr></thead>
+            <tbody>
+              {TEAM.map((t, i) => (
+                <React.Fragment key={i}>
+                  <tr onClick={() => setOpen(open === t.kam ? null : t.kam)} className="border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer">
+                    <td className="py-2.5 pr-3 font-bold text-slate-800">{open === t.kam ? "▾ " : "▸ "}{t.kam}</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{fmt(t.plan)}</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{fmt(t.fc)}</td>
+                    <td className="py-2.5 pr-3"><PctCell pct={t.pct} /></td>
+                    <td className="py-2.5 pr-3 tabular-nums">{t.contracts}</td>
+                    <td className="py-2.5 pr-3">{t.risk > 2 ? <Badge tone="red">{t.risk}</Badge> : <Badge tone={t.risk > 0 ? "amber" : "green"}>{t.risk}</Badge>}</td>
+                    <td className="py-2.5 text-xs">{t.dz > 0 ? <span className="text-red-600 font-bold">ДЗ {fmt(t.dz)} ₽</span> : <span className="text-emerald-700">ДЗ —</span>}{t.acts > 0 && <span className="text-amber-600"> · актов: {t.acts}</span>}</td>
+                  </tr>
+                  {open === t.kam && (
+                    <tr><td colSpan={7} className="bg-slate-50/60 px-4 py-2.5">
+                      {t.kam === "Скокнина Анна" ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {CONTRACTS.map((c) => (
+                            <button key={c.id} onClick={(e) => { e.stopPropagation(); openContract(c.id); }} className={`text-xs px-2.5 py-1.5 rounded-md border font-medium ${c.risk === "high" ? "bg-red-50 border-red-200 text-red-700" : c.risk === "mid" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+                              {c.name} · {c.pct}%
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">Контракты КАМа (в моке детализирована только Скокнина)</span>
+                      )}
+                    </td></tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        <div className="space-y-5">
+          <Card title="Критические отклонения · дублируются в Telegram">
+            <div className="space-y-2 text-sm">
+              {[["red", "Баскакова: ДЗ 412 т.₽ — 81 день, вычет через 9 дней"], ["red", "Татхимфарм (Скокнина): акт 1 кв. просрочен 12 дней"], ["amber", "Акрихин: прогноз 66% при бюджете 1,75 млн — нужен буст"], ["amber", "Альпен Фарма: список аптек не согласован 24 дня"], ["amber", "2 контракта без среза производителя"]].map(([tone, t], i) => (
+                <div key={i} className={`rounded-lg border px-3 py-2.5 ${tone === "red" ? "bg-red-50 border-red-100 text-red-800" : "bg-amber-50/60 border-amber-100 text-amber-800"}`}>{t}</div>
+              ))}
+            </div>
+          </Card>
+          <Card title="Портфель: структура">
+            <div className="space-y-2 text-sm text-slate-600">
+              <div className="flex justify-between"><span>Прямые контракты</span><span className="tabular-nums font-bold">58,1 млн ₽</span></div>
+              <div className="flex justify-between"><span>АСНА</span><span className="tabular-nums font-bold">31,2 млн ₽</span></div>
+              <div className="flex justify-between"><span>Доп. бюджеты</span><span className="tabular-nums font-bold">8,9 млн ₽</span></div>
+              <div className="flex justify-between"><span>Спасатели</span><span className="tabular-nums font-bold">11 юрлиц · 6 контрактов</span></div>
+              <div className="flex justify-between pt-2 border-t border-slate-100"><span>Прогноз квартала</span><span className="tabular-nums font-bold text-amber-600">93%</span></div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ЗАКРЫТЫЙ КОНТУР · Настройки ── */
+
+function SettingsScreen() {
+  const [tab, setTab] = useState("scale");
+  return (
+    <div className="space-y-5 max-w-4xl">
+      <LockBanner who="администратор, руководитель КАМ" />
+      <Tabs active={tab} onChange={setTab} tabs={[["scale", "Шкала премии"], ["fc", "Прогноз"], ["boost", "Буст-коэффициенты"], ["match", "Матчинг и дедлайны"]]} />
+      {tab === "scale" && (
+        <Card title="Шкала коэффициента премии · задаётся на квартал" right={<button className="text-xs text-[#0F4C81] font-bold">Копировать на след. квартал</button>}>
+          <table className="w-full text-sm max-w-md">
+            <thead><tr className="border-b border-slate-100"><Th>Выполнение плана</Th><Th>Коэффициент (× оклад)</Th></tr></thead>
+            <tbody>{SCALE.map(([l, c], i) => (
+              <tr key={i} className="border-b border-slate-50"><td className="py-2 text-slate-700 font-medium">{l}</td><td className="py-2"><input defaultValue={String(c).replace(".", ",")} className="w-20 border border-slate-300 rounded-lg px-3 py-1 tabular-nums text-sm" /></td></tr>
+            ))}</tbody>
+          </table>
+          <div className="mt-4 text-sm text-slate-500">Правила факта: акт ≤ 60 к.д., оплата ≤ 90 к.д. после квартала; ДЗ &gt; 90 к.д. вычёркивается из выполнения.</div>
+        </Card>
+      )}
+      {tab === "fc" && (
+        <Card title="Модель прогноза исполнения">
+          <div className="space-y-4 text-sm">
+            <label className="flex items-center gap-3"><input type="radio" name="fc" defaultChecked className="w-4 h-4" /> <span className="text-slate-700 font-medium">Run-rate: факт ÷ доля прошедшего квартала</span></label>
+            <label className="flex items-center gap-3"><input type="radio" name="fc" className="w-4 h-4" /> <span className="text-slate-700 font-medium">Run-rate × сезонные коэффициенты месяцев</span></label>
+            <div className="ml-7 flex gap-4 text-slate-500">
+              {[["Апрель", "0,96"], ["Май", "0,97"], ["Июнь", "1,07"]].map(([m, k], i) => (
+                <span key={i}>{m}: <input defaultValue={k} className="w-16 border border-slate-300 rounded-lg px-2 py-1 tabular-nums" /></span>
+              ))}
+            </div>
+            <div className="text-xs text-slate-400">Сезонность считается из истории закупок по SKU за 2024–2025, редактируется вручную.</div>
+          </div>
+        </Card>
+      )}
+      {tab === "boost" && (
+        <Card title="Эффект буст-инструментов · % к прогнозу контракта">
+          <table className="w-full text-sm max-w-xl">
+            <tbody>
+              {[["Промо-заказ ФА", "7", "история 4 кварталов, авто"], ["Спецакция фармацевтам", "4", "экспертная оценка"], ["Чеки ФА по SKU", "2,5", "экспертная оценка"], ["Эффект подключения заведующей", "+0,9 закуп. точки / 3 подкл.", "история ФА"]].map(([n, v, s], i) => (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="py-2 text-slate-700 font-medium">{n}</td>
+                  <td className="py-2"><input defaultValue={v} className="w-32 border border-slate-300 rounded-lg px-3 py-1 tabular-nums" /></td>
+                  <td className="py-2 text-xs text-slate-400">{s}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-3 text-xs text-slate-400">По мере накопления данных ФА коэффициенты пересчитываются из фактического эффекта включений.</div>
+        </Card>
+      )}
+      {tab === "match" && (
+        <Card title="Матчинг ИНН и дедлайны">
+          <div className="space-y-3 text-sm max-w-xl">
+            {[["Порог автопринятия совпадения", "92", "%"], ["Акт после квартала, не позднее", "60", "к.д."], ["Оплата после квартала, не позднее", "90", "к.д."], ["Предупреждать о ДЗ за", "14", "дней"]].map(([t, v, u], i) => (
+              <div key={i} className="flex justify-between items-center"><span className="text-slate-700 font-medium">{t}</span><span><input defaultValue={v} className="w-20 border border-slate-300 rounded-lg px-3 py-1 tabular-nums" /> {u}</span></div>
+            ))}
+            <div className="pt-3 border-t border-slate-100 text-xs text-slate-400 leading-relaxed">Жёсткие инварианты (не настраиваются): живой контракт из сценария не меняется; подтверждённые пары матчинга не удаляются задним числом в закрытом квартале; расчётный источник контракта фиксируется при согласовании с ОКЭ; экономика ФХ и распределение бонусов не видны роли КАМ.</div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ── Приложение ── */
+
+function App() {
+  const [screen, setScreen] = useState("portfolio");
+  const NAV_KAM = [["portfolio", "Мой портфель"], ["contract", "Контракт · Авексима"], ["recon", "Сверка данных"], ["scenario", "Сценарий буста"], ["premium", "Моя премия"]];
+  const NAV_LOCK = [["saviors", "Спасатели"], ["economics", "Экономика"], ["team", "Свод КАМ"], ["settings", "Настройки"]];
+
+  const NavBtn = ({ k, l, locked }) => (
+    <button onClick={() => setScreen(k)}
+      className={`text-sm px-3 py-2 rounded-lg whitespace-nowrap ${screen === k ? (locked ? "bg-violet-700 text-white font-semibold" : "bg-[#0F4C81] text-white font-semibold") : locked ? "text-violet-700 hover:bg-violet-50" : "text-slate-600 hover:bg-slate-100"}`}>
+      {locked && "🔒 "}{l}
+    </button>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#F2F4F7] text-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-[1480px] mx-auto px-5 py-3 flex items-center gap-5 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#0F4C81] text-white grid place-items-center text-sm font-bold">ФХ</div>
+            <div>
+              <div className="text-sm font-bold leading-tight">ФармХаб CRM · КАМ</div>
+              <div className="text-xs text-slate-400 leading-tight">мок v3 · данные тестовые · {Q.label}, день {Q.day}/{Q.days}</div>
+            </div>
+          </div>
+          <nav className="flex items-center gap-1 flex-wrap">
+            {NAV_KAM.map(([k, l]) => <NavBtn key={k} k={k} l={l} />)}
+            <div className="flex items-center gap-1 ml-2 pl-3 border-l-2 border-violet-200 bg-violet-50/60 rounded-lg px-2 py-1">
+              <span className="text-[10px] uppercase tracking-wide text-violet-500 font-bold mr-1">По правам доступа</span>
+              {NAV_LOCK.map(([k, l]) => <NavBtn key={k} k={k} l={l} locked />)}
+            </div>
+          </nav>
+          <div className="ml-auto text-xs text-slate-400 whitespace-nowrap">Скокнина Анна · КАМ <span className="text-violet-500">(демо: закрытый контур открыт)</span></div>
+        </div>
+      </header>
+      <main className="max-w-[1480px] mx-auto px-5 py-5">
+        {screen === "portfolio" && <PortfolioScreen openContract={() => setScreen("contract")} />}
+        {screen === "contract" && <ContractScreen goScenario={() => setScreen("scenario")} />}
+        {screen === "recon" && <ReconScreen />}
+        {screen === "scenario" && <ScenarioScreen />}
+        {screen === "premium" && <PremiumScreen />}
+        {screen === "saviors" && <SaviorsScreen />}
+        {screen === "economics" && <EconomicsScreen />}
+        {screen === "team" && <TeamScreen openContract={() => setScreen("contract")} />}
+        {screen === "settings" && <SettingsScreen />}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+</script>
+</body>
+</html>
